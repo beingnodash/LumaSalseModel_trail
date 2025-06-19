@@ -105,28 +105,33 @@ with tab1:
     # 参数选择（简化版）
     st.markdown("**选择要优化的参数**")
     
-    # 预定义的常用参数组合
+    # 预定义的常用参数组合（更新为新的参数结构）
     parameter_presets = {
         "价格优化": [
-            "price_per_feature_use",
-            "price_annual_member", 
-            "price_3year_member"
+            "student_prices.price_per_use",
+            "student_prices.price_1year_member", 
+            "student_prices.price_3year_member",
+            "student_prices.price_5year_member"
         ],
         "分成策略": [
-            "type2_luma_share_from_student.a",
-            "type2_luma_share_from_student.b",
-            "type2_luma_share_from_student.c"
+            "revenue_sharing.luma_share_from_student"
         ],
         "市场策略": [
-            "new_clients_per_half_year",
-            "student_total_paid_cr",
-            "renewal_rate_uni"
+            "market_scale.new_clients_per_half_year",
+            "market_distribution.student_paid_conversion_rate_bc",
+            "renewal_rates.university_3year_renewal"
         ],
         "综合策略": [
-            "price_annual_member",
-            "new_clients_per_half_year", 
-            "type2_luma_share_from_student.a",
-            "renewal_rate_uni"
+            "student_prices.price_1year_member",
+            "market_scale.new_clients_per_half_year", 
+            "revenue_sharing.luma_share_from_student",
+            "renewal_rates.university_3year_renewal"
+        ],
+        "高校定价策略": [
+            "university_prices.mode_a_price",
+            "university_prices.mode_b_price",
+            "market_distribution.mode_a_ratio",
+            "market_distribution.mode_b_ratio"
         ]
     }
     
@@ -136,22 +141,60 @@ with tab1:
     # 显示选中的参数
     st.write(f"已选择参数: {', '.join(selected_params)}")
     
-    # 自动生成参数范围
+    # 自动生成参数范围（适配新参数结构）
     param_ranges = {}
     for param in selected_params:
         st.markdown(f"##### {param}")
-        if "price" in param:
+        
+        # 根据参数类型设置合理的默认范围
+        if "price_per_use" in param:
             col1, col2 = st.columns(2)
             with col1:
-                min_val = st.number_input(f"{param} 最小值", value=5.0, min_value=0.1, step=0.5, key=f"{param}_min")
+                min_val = st.number_input(f"{param} 最小值", value=3.0, min_value=0.1, step=0.5, key=f"{param}_min")
             with col2:
-                max_val = st.number_input(f"{param} 最大值", value=50.0, min_value=min_val + 0.1, step=0.5, key=f"{param}_max")
-        elif "share" in param or "rate" in param:
+                max_val = st.number_input(f"{param} 最大值", value=15.0, min_value=min_val + 0.1, step=0.5, key=f"{param}_max")
+        elif "price_1year_member" in param:
             col1, col2 = st.columns(2)
             with col1:
-                min_val = st.number_input(f"{param} 最小值", value=0.1, min_value=0.0, max_value=1.0, step=0.05, key=f"{param}_min")
+                min_val = st.number_input(f"{param} 最小值", value=100.0, min_value=50.0, step=10.0, key=f"{param}_min")
             with col2:
-                max_val = st.number_input(f"{param} 最大值", value=0.9, min_value=min_val, max_value=1.0, step=0.05, key=f"{param}_max")
+                max_val = st.number_input(f"{param} 最大值", value=300.0, min_value=min_val + 10.0, step=10.0, key=f"{param}_max")
+        elif "price_3year_member" in param:
+            col1, col2 = st.columns(2)
+            with col1:
+                min_val = st.number_input(f"{param} 最小值", value=250.0, min_value=100.0, step=25.0, key=f"{param}_min")
+            with col2:
+                max_val = st.number_input(f"{param} 最大值", value=600.0, min_value=min_val + 25.0, step=25.0, key=f"{param}_max")
+        elif "price_5year_member" in param:
+            col1, col2 = st.columns(2)
+            with col1:
+                min_val = st.number_input(f"{param} 最小值", value=400.0, min_value=200.0, step=50.0, key=f"{param}_min")
+            with col2:
+                max_val = st.number_input(f"{param} 最大值", value=800.0, min_value=min_val + 50.0, step=50.0, key=f"{param}_max")
+        elif "mode_a_price" in param or "mode_b_price" in param:
+            col1, col2 = st.columns(2)
+            with col1:
+                min_val = st.number_input(f"{param} 最小值", value=200000.0, min_value=0.0, step=50000.0, key=f"{param}_min")
+            with col2:
+                max_val = st.number_input(f"{param} 最大值", value=1000000.0, min_value=min_val + 50000.0, step=50000.0, key=f"{param}_max")
+        elif "share" in param or "rate" in param or "ratio" in param:
+            col1, col2 = st.columns(2)
+            with col1:
+                if "ratio" in param:
+                    min_val = st.number_input(f"{param} 最小值", value=0.1, min_value=0.0, max_value=1.0, step=0.05, key=f"{param}_min")
+                else:
+                    min_val = st.number_input(f"{param} 最小值", value=0.1, min_value=0.0, max_value=1.0, step=0.05, key=f"{param}_min")
+            with col2:
+                if "ratio" in param:
+                    max_val = st.number_input(f"{param} 最大值", value=0.8, min_value=min_val, max_value=1.0, step=0.05, key=f"{param}_max")
+                else:
+                    max_val = st.number_input(f"{param} 最大值", value=0.9, min_value=min_val, max_value=1.0, step=0.05, key=f"{param}_max")
+        elif "new_clients_per_half_year" in param:
+            col1, col2 = st.columns(2)
+            with col1:
+                min_val = st.number_input(f"{param} 最小值", value=1, step=1, key=f"{param}_min")
+            with col2:
+                max_val = st.number_input(f"{param} 最大值", value=15, min_value=min_val, step=1, key=f"{param}_max")
         else:
             col1, col2 = st.columns(2)
             with col1:
@@ -297,14 +340,22 @@ with tab2:
             st.subheader("📋 参数合理性分析")
             
             reasonable_ranges = {
-                'price_annual_member': (15, 100, "年费价格"),
-                'price_3year_member': (40, 200, "三年费价格"), 
-                'price_5year_member': (60, 300, "五年费价格"),
-                'type2_luma_share_from_student.a': (0.2, 0.8, "Type2a分成比例"),
-                'type2_luma_share_from_student.b': (0.3, 0.9, "Type2b分成比例"),
-                'type2_luma_share_from_student.c': (0.4, 0.95, "Type2c分成比例"),
-                'renewal_rate_uni': (0.5, 0.95, "高校续约率"),
-                'new_clients_per_half_year': (1, 20, "半年新客户数")
+                'student_prices.price_per_use': (3, 15, "按次使用价格"),
+                'student_prices.price_1year_member': (100, 300, "一年订阅价格"),
+                'student_prices.price_3year_member': (250, 600, "三年订阅价格"), 
+                'student_prices.price_5year_member': (400, 800, "五年订阅价格"),
+                'university_prices.mode_a_price': (200000, 1000000, "高校模式A价格"),
+                'university_prices.mode_b_price': (200000, 1000000, "高校模式B价格"),
+                'revenue_sharing.luma_share_from_student': (0.2, 0.8, "学生付费分成比例"),
+                'renewal_rates.university_3year_renewal': (0.5, 0.95, "高校续约率"),
+                'renewal_rates.student_per_use_repurchase': (0.3, 0.9, "按次付费复购率"),
+                'renewal_rates.student_subscription_renewal': (0.6, 0.9, "订阅续费率"),
+                'market_scale.new_clients_per_half_year': (1, 15, "半年新客户数"),
+                'market_scale.avg_students_per_uni': (5000, 30000, "平均学校规模"),
+                'market_distribution.student_paid_conversion_rate_bc': (0.05, 0.3, "B/C模式学生付费转化率"),
+                'market_distribution.mode_a_ratio': (0.1, 0.7, "模式A占比"),
+                'market_distribution.mode_b_ratio': (0.1, 0.7, "模式B占比"),
+                'market_distribution.mode_c_ratio': (0.1, 0.7, "模式C占比")
             }
             
             analysis_results = []
@@ -353,7 +404,7 @@ with tab3:
                 # 初始化鲁棒性分析器
                 robustness_analyzer = RobustnessAnalyzer(
                     st.session_state.model_params,
-                    results.get('objective_metric', 'Luma_Revenue_Total')
+                    results.get('objective_metric', 'luma_revenue_total')
                 )
                 
                 # 生成不确定性范围
@@ -488,7 +539,7 @@ if run_enhanced_button and param_ranges:
                         best_params, best_score, all_results = enhanced_grid_search_optimizer(
                             st.session_state.model_params,
                             param_ranges,
-                            'Luma_Revenue_Total',
+                            'luma_revenue_total',
                             best_algorithm['suggested_params'].get('points_per_dim', 5),
                             progress_callback,
                             constraint_handler,
@@ -500,7 +551,7 @@ if run_enhanced_button and param_ranges:
                         best_params, best_score, all_results = enhanced_bayesian_optimizer(
                             st.session_state.model_params,
                             param_ranges,
-                            'Luma_Revenue_Total',
+                            'luma_revenue_total',
                             best_algorithm['suggested_params'].get('n_iterations', 50),
                             best_algorithm['suggested_params'].get('n_initial_points', 10),
                             best_algorithm['suggested_params'].get('exploitation_vs_exploration', 0.1),
@@ -512,7 +563,7 @@ if run_enhanced_button and param_ranges:
                         best_params, best_score, all_results = enhanced_genetic_algorithm_optimizer(
                             st.session_state.model_params,
                             param_ranges,
-                            'Luma_Revenue_Total',
+                            'luma_revenue_total',
                             best_algorithm['suggested_params'].get('population_size', 30),
                             best_algorithm['suggested_params'].get('n_generations', 20),
                             best_algorithm['suggested_params'].get('mutation_rate', 0.1),
@@ -527,7 +578,7 @@ if run_enhanced_button and param_ranges:
                         best_params, best_score, all_results = grid_search_optimizer(
                             st.session_state.model_params,
                             param_ranges,
-                            'Luma_Revenue_Total',
+                            'luma_revenue_total',
                             best_algorithm['suggested_params'].get('points_per_dim', 5),
                             progress_callback,
                             constraint_handler,
@@ -537,7 +588,7 @@ if run_enhanced_button and param_ranges:
                         best_params, best_score, all_results = bayesian_optimizer(
                             st.session_state.model_params,
                             param_ranges,
-                            'Luma_Revenue_Total',
+                            'luma_revenue_total',
                             best_algorithm['suggested_params'].get('n_iterations', 50),
                             best_algorithm['suggested_params'].get('n_initial_points', 10),
                             best_algorithm['suggested_params'].get('exploitation_vs_exploration', 0.1),
@@ -547,7 +598,7 @@ if run_enhanced_button and param_ranges:
                         best_params, best_score, all_results = genetic_algorithm_optimizer(
                             st.session_state.model_params,
                             param_ranges,
-                            'Luma_Revenue_Total',
+                            'luma_revenue_total',
                             best_algorithm['suggested_params'].get('population_size', 30),
                             best_algorithm['suggested_params'].get('n_generations', 20),
                             best_algorithm['suggested_params'].get('mutation_rate', 0.1),
@@ -561,7 +612,7 @@ if run_enhanced_button and param_ranges:
                     'best_params': best_params,
                     'best_score': best_score,
                     'all_results': all_results,
-                    'objective_metric': 'Luma_Revenue_Total',
+                    'objective_metric': 'luma_revenue_total',
                     'monitor': monitor if enable_monitoring else None
                 }
                 
@@ -569,7 +620,7 @@ if run_enhanced_button and param_ranges:
                 # 使用集成优化器
                 ensemble_optimizer = EnsembleOptimizer(
                     st.session_state.model_params,
-                    'Luma_Revenue_Total'
+                    'luma_revenue_total'
                 )
                 
                 result = ensemble_optimizer.optimize(
@@ -587,7 +638,7 @@ if run_enhanced_button and param_ranges:
                     'best_score': result.best_score,
                     'execution_time': result.execution_time,
                     'individual_results': ensemble_optimizer.individual_results,
-                    'objective_metric': 'Luma_Revenue_Total'
+                    'objective_metric': 'luma_revenue_total'
                 }
                 
                 # 添加生成对比报告的方法
@@ -651,26 +702,43 @@ if run_enhanced_button and param_ranges:
             strategy_recommendations = []
             
             for param, value in result['best_params'].items():
-                if 'price_annual_member' in param and isinstance(value, (int, float)):
-                    if value > 40:
-                        strategy_recommendations.append(f"🔸 **年费定价**: {value:.0f}元属于高价策略，建议强化产品价值宣传，突出高级功能")
-                    elif value < 25:
-                        strategy_recommendations.append(f"🔸 **年费定价**: {value:.0f}元属于低价策略，建议通过价格优势快速获取市场份额")
+                if 'price_1year_member' in param and isinstance(value, (int, float)):
+                    if value > 200:
+                        strategy_recommendations.append(f"🔸 **1年订阅定价**: {value:.0f}元属于高价策略，建议强化产品价值宣传，突出高级功能")
+                    elif value < 150:
+                        strategy_recommendations.append(f"🔸 **1年订阅定价**: {value:.0f}元属于低价策略，建议通过价格优势快速获取市场份额")
                     else:
-                        strategy_recommendations.append(f"🔸 **年费定价**: {value:.0f}元定价适中，平衡了市场接受度和盈利能力")
+                        strategy_recommendations.append(f"🔸 **1年订阅定价**: {value:.0f}元定价适中，平衡了市场接受度和盈利能力")
                 
-                elif 'type2_luma_share_from_student' in param and isinstance(value, (int, float)):
-                    share_type = param.split('.')[-1] if '.' in param else ''
-                    if value > 0.7:
-                        strategy_recommendations.append(f"🔸 **分成策略{share_type.upper()}**: {value:.1%}的高分成比例，建议为高校提供更多增值服务以维持合作")
+                elif 'price_per_use' in param and isinstance(value, (int, float)):
+                    if value > 10:
+                        strategy_recommendations.append(f"🔸 **按次使用定价**: {value:.1f}元较高，适合高价值功能，建议强调单次使用的便利性")
+                    elif value < 5:
+                        strategy_recommendations.append(f"🔸 **按次使用定价**: {value:.1f}元较低，有利于吸引尝试用户，建议引导转化为订阅")
+                
+                elif 'luma_share_from_student' in param and isinstance(value, (int, float)):
+                    if value > 0.6:
+                        strategy_recommendations.append(f"🔸 **学生分成策略**: {value:.1%}的高分成比例，建议为高校提供更多增值服务以维持合作")
                     elif value < 0.4:
-                        strategy_recommendations.append(f"🔸 **分成策略{share_type.upper()}**: {value:.1%}的低分成比例，有利于高校接受度，可考虑适度提升")
+                        strategy_recommendations.append(f"🔸 **学生分成策略**: {value:.1%}的低分成比例，有利于高校接受度，可考虑适度提升")
+                
+                elif 'mode_a_price' in param and isinstance(value, (int, float)):
+                    if value > 800000:
+                        strategy_recommendations.append(f"🔸 **模式A定价**: {value:,.0f}元的高价策略，需要提供全面的服务保障和ROI证明")
+                    elif value < 400000:
+                        strategy_recommendations.append(f"🔸 **模式A定价**: {value:,.0f}元的亲民定价，有利于快速市场渗透")
                 
                 elif 'new_clients_per_half_year' in param and isinstance(value, (int, float)):
-                    if value > 10:
+                    if value > 8:
                         strategy_recommendations.append(f"🔸 **市场拓展**: 每半年{value:.0f}家新客户的目标较高，建议加大销售投入和渠道建设")
-                    elif value < 5:
+                    elif value < 4:
                         strategy_recommendations.append(f"🔸 **市场拓展**: 每半年{value:.0f}家新客户目标保守，可将资源更多投入现有客户维护")
+                
+                elif 'student_paid_conversion_rate_bc' in param and isinstance(value, (int, float)):
+                    if value > 0.15:
+                        strategy_recommendations.append(f"🔸 **付费转化**: {value:.1%}的转化率较高，说明产品价值获得认可，可考虑适度提价")
+                    elif value < 0.08:
+                        strategy_recommendations.append(f"🔸 **付费转化**: {value:.1%}的转化率偏低，建议优化产品体验和降低付费门槛")
             
             if strategy_recommendations:
                 for rec in strategy_recommendations:

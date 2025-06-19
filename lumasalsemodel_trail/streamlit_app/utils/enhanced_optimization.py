@@ -45,9 +45,9 @@ def run_model_with_realistic_constraints(base_params: Dict[str, Any],
                 d = d[k]
             d[keys[-1]] = param_value
         
-        # 3. 运行模型获得基础得分
-        from luma_sales_model.financial_model import LumaFinancialModel
-        model = LumaFinancialModel(params=model_params)
+        # 3. 运行模型获得基础得分（使用新的简化模型）
+        from luma_sales_model.simplified_financial_model import LumaSimplifiedFinancialModel
+        model = LumaSimplifiedFinancialModel(params=model_params)
         results_df = model.run_model()
         
         if results_df is not None and not results_df.empty and objective_metric in results_df.columns:

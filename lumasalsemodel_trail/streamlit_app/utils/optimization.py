@@ -23,7 +23,8 @@ except ImportError:
 
 # 确保能够找到 luma_sales_model模块
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from luma_sales_model.financial_model import LumaFinancialModel
+# 更新为新的简化模型
+from luma_sales_model.simplified_financial_model import LumaSimplifiedFinancialModel
 
 # 导入新的优化组件
 try:
@@ -72,8 +73,8 @@ def run_model_with_params(base_params: dict, params_to_update: dict, objective_m
                 d = d[k]
             d[keys[-1]] = param_value
         
-        # 初始化并运行模型
-        model = LumaFinancialModel(params=model_params)
+        # 初始化并运行模型（使用新的简化模型）
+        model = LumaSimplifiedFinancialModel(params=model_params)
         results_df = model.run_model() # run_model 返回一个DataFrame
 
         # 检查DataFrame是否有效以及目标列是否存在
