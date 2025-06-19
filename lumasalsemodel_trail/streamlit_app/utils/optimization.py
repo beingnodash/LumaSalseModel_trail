@@ -6,6 +6,8 @@ import sys
 import os
 import itertools # 确保导入 itertools
 import time      # 确保导入 time
+import warnings
+from typing import Dict, Any, Tuple, Optional, Callable
 
 try:
     from skopt import gp_minimize
@@ -22,6 +24,25 @@ except ImportError:
 # 确保能够找到 luma_sales_model模块
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from luma_sales_model.financial_model import LumaFinancialModel
+
+# 导入新的优化组件
+try:
+    from .constraint_handler import LumaConstraintHandler
+    from .optimization_monitor import OptimizationMonitor, OptimizationCallback
+except ImportError:
+    # 如果导入失败，定义空的替代类
+    class LumaConstraintHandler:
+        def __init__(self, *args, **kwargs): pass
+        def validate_and_repair_optimization_params(self, params): return params
+    
+    class OptimizationMonitor:
+        def __init__(self, *args, **kwargs): pass
+        def record_iteration(self, *args, **kwargs): pass
+        def should_stop_early(self): return False
+    
+    class OptimizationCallback:
+        def __init__(self, *args, **kwargs): pass
+        def __call__(self, *args, **kwargs): return False
 
 def run_model_with_params(base_params: dict, params_to_update: dict, objective_metric: str) -> float:
     """
@@ -77,7 +98,9 @@ def grid_search_optimizer(base_params: dict,
                           params_to_optimize_ranges: dict, 
                           objective_metric: str, 
                           points_per_dim: int,
-                          progress_callback=None) -> tuple:
+                          progress_callback=None,
+                          constraint_handler: Optional[LumaConstraintHandler] = None,
+                          monitor: Optional[OptimizationMonitor] = None) -> tuple:
     """
     执行网格搜索以找到最大化目标指标的参数组合。
 
@@ -89,6 +112,8 @@ def grid_search_optimizer(base_params: dict,
         points_per_dim (int): 每个参数维度上要采样的点数。
         progress_callback (function, optional): 用于报告进度的回调函数。
                                                 它应该接受一个浮点数 (0.0 到 1.0)。
+        constraint_handler: 约束处理器
+        monitor: 优化监控器
 
     Returns:
         tuple: (best_params, best_score, all_results_df)
@@ -126,18 +151,44 @@ def grid_search_optimizer(base_params: dict,
     
     results_list = [] # 用于存储每次运行的结果
 
+    # 初始化约束处理器和监控器
+    if constraint_handler is None:
+        constraint_handler = LumaConstraintHandler(params_to_optimize_ranges)
+    
+    if monitor is None:
+        monitor = OptimizationMonitor(patience=max(5, total_combinations // 20))
+    
     start_time = time.time()
 
     for i, current_combination_values in enumerate(param_combinations):
         params_to_update = dict(zip(param_names, current_combination_values))
         
+        # 应用约束修复
+        try:
+            params_to_update = constraint_handler.validate_and_repair_optimization_params(params_to_update)
+        except Exception as e:
+            warnings.warn(f"约束修复失败: {str(e)}")
+        
         current_score = run_model_with_params(base_params, params_to_update, objective_metric)
+        
+        # 更新监控器
+        monitor.record_iteration(
+            iteration=i+1,
+            current_score=current_score,
+            best_score=max(best_score, current_score),
+            exploration_rate=1.0 - (i / total_combinations)
+        )
         
         results_list.append({**params_to_update, objective_metric: current_score})
 
         if current_score > best_score:
             best_score = current_score
             best_params_combination = params_to_update
+        
+        # 检查早停
+        if monitor.should_stop_early():
+            print(f"检测到早停条件，在第{i+1}次迭代停止")
+            break
             
         if progress_callback:
             progress_callback((i + 1) / total_combinations)
