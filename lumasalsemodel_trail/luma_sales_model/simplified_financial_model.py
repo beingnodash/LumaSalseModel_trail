@@ -25,10 +25,10 @@ class LumaSimplifiedFinancialModel:
             
             # 价格参数
             'student_prices': {
-                'price_per_use': 8.0,
-                'price_1year_member': 150.0,
-                'price_3year_member': 400.0,
-                'price_5year_member': 600.0
+                'price_single_use': 7.9,
+                'price_5_times_card': 29.9,
+                'price_10_times_card': 49.9,
+                'price_20_times_card': 79.9
             },
             'university_prices': {
                 'mode_a_price': 600000.0,
@@ -52,24 +52,26 @@ class LumaSimplifiedFinancialModel:
             
             # 学生市场细分分布
             'student_segmentation': {
-                'per_use_ratio': 0.4,
-                'subscription_period_distribution': {
-                    '1year': 0.6,
-                    '3year': 0.3,
-                    '5year': 0.1
+                'single_use_ratio': 0.4,
+                'card_type_distribution': {
+                    '5_times': 0.5,
+                    '10_times': 0.3,
+                    '20_times': 0.2
                 }
             },
             
             # 续费率与复购率参数
             'renewal_rates': {
                 'university_3year_renewal': 0.8,
-                'student_per_use_repurchase': 0.7,
-                'student_subscription_renewal': 0.75
+                'student_single_use_repurchase': 0.7,
+                'student_5_times_card_repurchase': 0.6,
+                'student_10_times_card_repurchase': 0.65,
+                'student_20_times_card_repurchase': 0.7
             },
             
-            # 分成比例
+            # 分成比例（仅适用于模式B，模式C下Luma获得100%学生收入）
             'revenue_sharing': {
-                'luma_share_from_student': 0.4
+                'luma_share_from_student_mode_b': 0.4
             },
             
             # 内部计算参数
@@ -106,11 +108,20 @@ class LumaSimplifiedFinancialModel:
         if not np.isclose(mode_sum, 1.0):
             warnings.warn(f"商业模式分布总和为 {mode_sum}，应为1.0")
         
-        # 验证订阅期限分布总和为1
-        sub_dist = p['student_segmentation']['subscription_period_distribution']
-        sub_sum = sum(sub_dist.values())
-        if not np.isclose(sub_sum, 1.0):
-            warnings.warn(f"订阅期限分布总和为 {sub_sum}，应为1.0")
+        # 验证次卡类型分布总和为1
+        card_dist = p['student_segmentation']['card_type_distribution']
+        card_sum = sum(card_dist.values())
+        if not np.isclose(card_sum, 1.0):
+            warnings.warn(f"次卡类型分布总和为 {card_sum}，应为1.0")
+        
+        # 验证单次使用与次卡比例合理性
+        single_ratio = p['student_segmentation']['single_use_ratio']
+        if not (0.0 <= single_ratio <= 1.0):
+            warnings.warn(f"单次使用比例为 {single_ratio}，应在[0, 1]范围内")
+        
+        # 验证模拟周期数在合理范围内
+        if not (1 <= p['total_half_years'] <= 16):
+            warnings.warn(f"模拟周期数为 {p['total_half_years']}，应在1-16范围内")
     
     def _calculate_university_revenue(self, mode: str, uni_count: int, period: int, 
                                     cohort_start_period: int) -> float:
@@ -142,13 +153,14 @@ class LumaSimplifiedFinancialModel:
         return 0.0
     
     def _calculate_student_revenue(self, mode: str, total_students: int, 
-                                 active_paying_students: int, period: int) -> Dict[str, float]:
-        """计算学生端收入"""
+                                 active_paying_students: int, period: int, 
+                                 cohort_start_period: int) -> Dict[str, float]:
+        """计算学生端收入（基于次卡模式）"""
         if mode == 'mode_a':
             # 模式A学生全免费
             return {
-                'per_use_revenue': 0,
-                'subscription_revenue': 0,
+                'single_use_revenue': 0,
+                'card_revenue': 0,
                 'total_student_revenue': 0,
                 'luma_share': 0,
                 'uni_share': 0
@@ -156,85 +168,137 @@ class LumaSimplifiedFinancialModel:
         
         if active_paying_students <= 0:
             return {
-                'per_use_revenue': 0,
-                'subscription_revenue': 0,
+                'single_use_revenue': 0,
+                'card_revenue': 0,
                 'total_student_revenue': 0,
                 'luma_share': 0,
                 'uni_share': 0
             }
         
-        # 计算按次付费收入（包含复购率的当期折算）
-        per_use_revenue = self._calculate_per_use_revenue(active_paying_students)
+        # 计算单次使用收入（包含复购）
+        single_use_revenue = self._calculate_single_use_revenue(active_paying_students, period, cohort_start_period)
         
-        # 计算订阅付费收入（考虑收入记账时间）
-        subscription_revenue = self._calculate_subscription_revenue(active_paying_students, period)
+        # 计算次卡收入（包含复购）
+        card_revenue = self._calculate_card_revenue(active_paying_students, period, cohort_start_period)
         
-        total_student_revenue = per_use_revenue + subscription_revenue
+        total_student_revenue = single_use_revenue + card_revenue
         
-        # 计算分成
-        luma_share_rate = self.params['revenue_sharing']['luma_share_from_student']
-        luma_share = total_student_revenue * luma_share_rate
-        uni_share = total_student_revenue * (1 - luma_share_rate)
+        # 计算分成（模式B/C不同的分成比例）
+        if mode == 'mode_c':
+            # 模式C：Luma获得100%学生收入
+            luma_share = total_student_revenue
+            uni_share = 0
+        else:  # mode == 'mode_b'
+            # 模式B：按设定比例分成
+            luma_share_rate = self.params['revenue_sharing']['luma_share_from_student_mode_b']
+            luma_share = total_student_revenue * luma_share_rate
+            uni_share = total_student_revenue * (1 - luma_share_rate)
         
         return {
-            'per_use_revenue': per_use_revenue,
-            'subscription_revenue': subscription_revenue,
+            'single_use_revenue': single_use_revenue,
+            'card_revenue': card_revenue,
             'total_student_revenue': total_student_revenue,
             'luma_share': luma_share,
             'uni_share': uni_share
         }
     
-    def _calculate_per_use_revenue(self, active_paying_students: float) -> float:
-        """计算按次付费收入（包含复购率的当期折算）"""
+    def _calculate_single_use_revenue(self, active_paying_students: float, period: int, cohort_start_period: int) -> float:
+        """计算单次使用收入（包含分期复购）"""
         segmentation = self.params['student_segmentation']
-        per_use_ratio = segmentation['per_use_ratio']
-        per_use_students = active_paying_students * per_use_ratio
+        single_use_ratio = segmentation['single_use_ratio']
+        single_use_students = active_paying_students * single_use_ratio
+        
+        if single_use_students <= 0:
+            return 0
         
         # 单次价格
-        price_per_use = self.params['student_prices']['price_per_use']
+        price_single_use = self.params['student_prices']['price_single_use']
         
         # 基础使用次数（假设每半年3次）
         base_uses_per_half_year = 3
         
-        # 考虑复购率的总使用次数（简化为当期折算）
-        repurchase_rate = self.params['renewal_rates']['student_per_use_repurchase']
-        effective_uses = base_uses_per_half_year * (1 + repurchase_rate)
+        # 计算复购收入（新购在当期，复购从下期开始）
+        if period == cohort_start_period:
+            # 当期只有新购，没有复购
+            effective_uses = base_uses_per_half_year
+        else:
+            # 从下期开始有复购
+            repurchase_rate = self.params['renewal_rates']['student_single_use_repurchase']
+            # 分期复购：将复购收入平均分布到后续周期
+            total_periods = self.params['total_half_years']
+            periods_for_repurchase = total_periods - cohort_start_period
+            if periods_for_repurchase > 1:
+                repurchase_per_period = repurchase_rate / (periods_for_repurchase - 1)
+                effective_uses = base_uses_per_half_year * (1 + repurchase_per_period)
+            else:
+                effective_uses = base_uses_per_half_year
         
-        return per_use_students * price_per_use * effective_uses
+        return single_use_students * price_single_use * effective_uses
     
-    def _calculate_subscription_revenue(self, active_paying_students: float, period: int) -> float:
-        """计算订阅付费收入（考虑收入记账时间）"""
+    def _calculate_card_revenue(self, active_paying_students: float, period: int, cohort_start_period: int) -> float:
+        """计算次卡收入（包含分期复购）"""
         segmentation = self.params['student_segmentation']
-        subscription_ratio = 1 - segmentation['per_use_ratio']
-        subscription_students = active_paying_students * subscription_ratio
+        card_ratio = 1 - segmentation['single_use_ratio']
+        card_students = active_paying_students * card_ratio
         
-        if subscription_students <= 0:
+        if card_students <= 0:
             return 0
         
-        period_dist = segmentation['subscription_period_distribution']
+        card_dist = segmentation['card_type_distribution']
         student_prices = self.params['student_prices']
+        renewal_rates = self.params['renewal_rates']
         
         total_revenue = 0
         
-        # 1年订阅用户
-        students_1year = subscription_students * period_dist['1year']
-        # 1年订阅按半年分摊收入
-        revenue_1year_per_half_year = student_prices['price_1year_member'] / 2
-        total_revenue += students_1year * revenue_1year_per_half_year
+        # 5次卡用户
+        students_5_times = card_students * card_dist['5_times']
+        card_5_revenue = self._calculate_card_type_revenue(
+            students_5_times, student_prices['price_5_times_card'], 
+            renewal_rates['student_5_times_card_repurchase'],
+            period, cohort_start_period, 5
+        )
+        total_revenue += card_5_revenue
         
-        # 3年订阅用户  
-        students_3year = subscription_students * period_dist['3year']
-        # 3年订阅按半年分摊收入
-        revenue_3year_per_half_year = student_prices['price_3year_member'] / 6
-        total_revenue += students_3year * revenue_3year_per_half_year
+        # 10次卡用户
+        students_10_times = card_students * card_dist['10_times']
+        card_10_revenue = self._calculate_card_type_revenue(
+            students_10_times, student_prices['price_10_times_card'],
+            renewal_rates['student_10_times_card_repurchase'],
+            period, cohort_start_period, 10
+        )
+        total_revenue += card_10_revenue
         
-        # 5年订阅用户
-        students_5year = subscription_students * period_dist['5year']
-        # 5年订阅按半年分摊收入
-        revenue_5year_per_half_year = student_prices['price_5year_member'] / 10
-        total_revenue += students_5year * revenue_5year_per_half_year
+        # 20次卡用户
+        students_20_times = card_students * card_dist['20_times']
+        card_20_revenue = self._calculate_card_type_revenue(
+            students_20_times, student_prices['price_20_times_card'],
+            renewal_rates['student_20_times_card_repurchase'],
+            period, cohort_start_period, 20
+        )
+        total_revenue += card_20_revenue
         
         return total_revenue
+    
+    def _calculate_card_type_revenue(self, students: float, card_price: float, repurchase_rate: float,
+                                   period: int, cohort_start_period: int, card_times: int) -> float:
+        """计算特定类型次卡的收入（包含分期复购）"""
+        if students <= 0:
+            return 0
+        
+        if period == cohort_start_period:
+            # 当期只有新购，没有复购
+            return students * card_price
+        else:
+            # 从下期开始有复购
+            total_periods = self.params['total_half_years']
+            periods_for_repurchase = total_periods - cohort_start_period
+            if periods_for_repurchase > 1:
+                # 将复购收入平均分布到后续周期
+                repurchase_per_period = repurchase_rate / (periods_for_repurchase - 1)
+                effective_repurchase = repurchase_per_period
+                return students * card_price * effective_repurchase
+            else:
+                return 0
     
     def _create_new_cohort(self, period: int) -> Dict[str, Any]:
         """创建新的客户群组"""
@@ -303,9 +367,24 @@ class LumaSimplifiedFinancialModel:
             
             student_data = cohort['students'][mode_key]
             if student_data['active_paying_students'] > 0:
-                # 使用订阅续费率作为学生整体留存率
-                renewal_rate = self.params['renewal_rates']['student_subscription_renewal']
-                student_data['active_paying_students'] *= renewal_rate
+                # 计算加权平均续费率（基于学生市场细分）
+                segmentation = self.params['student_segmentation']
+                renewal_rates = self.params['renewal_rates']
+                
+                single_ratio = segmentation['single_use_ratio']
+                card_dist = segmentation['card_type_distribution']
+                
+                # 加权平均续费率
+                avg_renewal_rate = (
+                    single_ratio * renewal_rates['student_single_use_repurchase'] +
+                    (1 - single_ratio) * (
+                        card_dist['5_times'] * renewal_rates['student_5_times_card_repurchase'] +
+                        card_dist['10_times'] * renewal_rates['student_10_times_card_repurchase'] +
+                        card_dist['20_times'] * renewal_rates['student_20_times_card_repurchase']
+                    )
+                )
+                
+                student_data['active_paying_students'] *= avg_renewal_rate
     
     def run_model(self) -> pd.DataFrame:
         """运行简化版财务模型"""
@@ -345,8 +424,8 @@ class LumaSimplifiedFinancialModel:
         # 初始化收入项
         uni_revenue_new = 0
         uni_revenue_renewal = 0
-        student_per_use_revenue = 0
-        student_subscription_revenue = 0
+        student_single_use_revenue = 0
+        student_card_revenue = 0
         luma_student_share = 0
         uni_student_share = 0
         
@@ -379,24 +458,24 @@ class LumaSimplifiedFinancialModel:
                     total_paying_students += active_paying
                     
                     student_revenue = self._calculate_student_revenue(
-                        mode_key, student_data['total_students'], active_paying, period
+                        mode_key, student_data['total_students'], active_paying, period, cohort['created_period']
                     )
                     
                     # 调整为实际活跃高校的学生
                     if uni_data['count'] > 0:
                         adjustment_ratio = active_unis / uni_data['count']
-                        for key in ['per_use_revenue', 'subscription_revenue', 
+                        for key in ['single_use_revenue', 'card_revenue', 
                                   'total_student_revenue', 'luma_share', 'uni_share']:
                             student_revenue[key] *= adjustment_ratio
                     
-                    student_per_use_revenue += student_revenue['per_use_revenue']
-                    student_subscription_revenue += student_revenue['subscription_revenue']
+                    student_single_use_revenue += student_revenue['single_use_revenue']
+                    student_card_revenue += student_revenue['card_revenue']
                     luma_student_share += student_revenue['luma_share']
                     uni_student_share += student_revenue['uni_share']
         
         # 汇总数据
         total_uni_revenue = uni_revenue_new + uni_revenue_renewal
-        total_student_revenue = student_per_use_revenue + student_subscription_revenue
+        total_student_revenue = student_single_use_revenue + student_card_revenue
         total_luma_revenue = total_uni_revenue + luma_student_share
         
         return {
@@ -406,8 +485,8 @@ class LumaSimplifiedFinancialModel:
             'uni_revenue_total': total_uni_revenue,
             
             # 学生收入
-            'student_revenue_per_use': student_per_use_revenue,
-            'student_revenue_subscription': student_subscription_revenue,
+            'student_revenue_single_use': student_single_use_revenue,
+            'student_revenue_card': student_card_revenue,
             'student_revenue_total': total_student_revenue,
             
             # Luma收入
@@ -502,9 +581,9 @@ class LumaSimplifiedFinancialModel:
         
         # 4. 学生收入构成
         axes[1, 1].stackplot(df['period'],
-                           df['student_revenue_per_use'],
-                           df['student_revenue_subscription'],
-                           labels=['按次付费', '订阅付费'],
+                           df['student_revenue_single_use'],
+                           df['student_revenue_card'],
+                           labels=['单次付费', '次卡付费'],
                            alpha=0.7)
         axes[1, 1].set_title('学生收入构成')
         axes[1, 1].set_xlabel('周期')

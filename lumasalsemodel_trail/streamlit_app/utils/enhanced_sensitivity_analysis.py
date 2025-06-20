@@ -40,32 +40,39 @@ class EnhancedSensitivityAnalyzer:
             'total_half_years': {
                 'category': '基础参数',
                 'name': '模拟周期数',
-                'min': 4, 'max': 16, 'steps': 7,
+                'min': 1, 'max': 16, 'steps': 8,
                 'format': '%.0f', 'unit': '个半年',
                 'description': '模拟的半年周期数量'
             },
             
             # 价格参数 - 学生端
-            'price_per_use': {
+            'price_single_use': {
                 'category': '价格参数',
                 'name': '学生单次付费价格',
                 'min': 5.0, 'max': 20.0, 'steps': 8,
                 'format': '%.1f', 'unit': '元',
-                'description': '学生按次使用功能的价格'
+                'description': '学生单次使用功能的价格'
             },
-            'price_1year_member': {
+            'price_5_times_card': {
                 'category': '价格参数',
-                'name': '学生1年订阅价格',
-                'min': 100.0, 'max': 300.0, 'steps': 9,
-                'format': '%.0f', 'unit': '元',
-                'description': '学生1年订阅会员价格'
+                'name': '学生5次卡价格',
+                'min': 20.0, 'max': 60.0, 'steps': 9,
+                'format': '%.1f', 'unit': '元',
+                'description': '学生购买5次卡的价格'
             },
-            'price_3year_member': {
+            'price_10_times_card': {
                 'category': '价格参数',
-                'name': '学生3年订阅价格',
-                'min': 300.0, 'max': 600.0, 'steps': 7,
-                'format': '%.0f', 'unit': '元',
-                'description': '学生3年订阅会员价格'
+                'name': '学生10次卡价格',
+                'min': 30.0, 'max': 80.0, 'steps': 8,
+                'format': '%.1f', 'unit': '元',
+                'description': '学生购买10次卡的价格'
+            },
+            'price_20_times_card': {
+                'category': '价格参数',
+                'name': '学生20次卡价格',
+                'min': 50.0, 'max': 120.0, 'steps': 8,
+                'format': '%.1f', 'unit': '元',
+                'description': '学生购买20次卡的价格'
             },
             
             # 价格参数 - 高校端
@@ -124,12 +131,33 @@ class EnhancedSensitivityAnalyzer:
             },
             
             # 学生市场细分
-            'per_use_ratio': {
+            'single_use_ratio': {
                 'category': '学生市场细分',
-                'name': '按次付费用户占比',
+                'name': '单次付费用户占比',
                 'min': 0.2, 'max': 0.8, 'steps': 7,
                 'format': '%.1%', 'unit': '',
-                'description': '选择按次付费的学生比例'
+                'description': '选择单次付费的学生比例'
+            },
+            'card_5_times_ratio': {
+                'category': '学生市场细分',
+                'name': '5次卡用户占比',
+                'min': 0.1, 'max': 0.6, 'steps': 6,
+                'format': '%.1%', 'unit': '',
+                'description': '在次卡用户中选择5次卡的比例'
+            },
+            'card_10_times_ratio': {
+                'category': '学生市场细分',
+                'name': '10次卡用户占比',
+                'min': 0.1, 'max': 0.6, 'steps': 6,
+                'format': '%.1%', 'unit': '',
+                'description': '在次卡用户中选择10次卡的比例'
+            },
+            'card_20_times_ratio': {
+                'category': '学生市场细分',
+                'name': '20次卡用户占比',
+                'min': 0.1, 'max': 0.6, 'steps': 6,
+                'format': '%.1%', 'unit': '',
+                'description': '在次卡用户中选择20次卡的比例'
             },
             
             # 续费率参数
@@ -140,28 +168,42 @@ class EnhancedSensitivityAnalyzer:
                 'format': '%.1%', 'unit': '',
                 'description': '高校3年服务期后的续约率'
             },
-            'student_per_use_repurchase': {
+            'student_single_use_repurchase': {
                 'category': '续费率参数',
-                'name': '学生按次付费复购率',
+                'name': '学生单次付费复购率',
                 'min': 0.4, 'max': 0.9, 'steps': 6,
                 'format': '%.1%', 'unit': '',
-                'description': '学生按次付费的复购概率'
+                'description': '学生单次付费的复购概率'
             },
-            'student_subscription_renewal': {
+            'student_5_times_card_repurchase': {
                 'category': '续费率参数',
-                'name': '学生订阅续费率',
-                'min': 0.5, 'max': 0.9, 'steps': 9,
+                'name': '学生5次卡复购率',
+                'min': 0.4, 'max': 0.9, 'steps': 6,
                 'format': '%.1%', 'unit': '',
-                'description': '学生订阅到期后的续费率'
+                'description': '学生5次卡到期后的复购率'
+            },
+            'student_10_times_card_repurchase': {
+                'category': '续费率参数',
+                'name': '学生10次卡复购率',
+                'min': 0.4, 'max': 0.9, 'steps': 6,
+                'format': '%.1%', 'unit': '',
+                'description': '学生10次卡到期后的复购率'
+            },
+            'student_20_times_card_repurchase': {
+                'category': '续费率参数',
+                'name': '学生20次卡复购率',
+                'min': 0.4, 'max': 0.9, 'steps': 6,
+                'format': '%.1%', 'unit': '',
+                'description': '学生20次卡到期后的复购率'
             },
             
             # 分成比例
-            'luma_share_from_student': {
+            'luma_share_from_student_mode_b': {
                 'category': '分成比例',
-                'name': 'Luma学生分成比例',
+                'name': 'Luma学生分成比例(模式B)',
                 'min': 0.2, 'max': 0.7, 'steps': 6,
                 'format': '%.1%', 'unit': '',
-                'description': 'B/C模式下Luma的分成比例'
+                'description': '模式B下Luma的分成比例(模式C为100%)'
             }
         }
     
@@ -172,10 +214,10 @@ class EnhancedSensitivityAnalyzer:
             'total_half_years': ['total_half_years'],
             
             # 学生价格参数
-            'price_per_use': ['student_prices', 'price_per_use'],
-            'price_1year_member': ['student_prices', 'price_1year_member'],
-            'price_3year_member': ['student_prices', 'price_3year_member'],
-            'price_5year_member': ['student_prices', 'price_5year_member'],
+            'price_single_use': ['student_prices', 'price_single_use'],
+            'price_5_times_card': ['student_prices', 'price_5_times_card'],
+            'price_10_times_card': ['student_prices', 'price_10_times_card'],
+            'price_20_times_card': ['student_prices', 'price_20_times_card'],
             
             # 高校价格参数
             'mode_a_price': ['university_prices', 'mode_a_price'],
@@ -192,15 +234,20 @@ class EnhancedSensitivityAnalyzer:
             'student_paid_conversion_rate_bc': ['market_distribution', 'student_paid_conversion_rate_bc'],
             
             # 学生市场细分
-            'per_use_ratio': ['student_segmentation', 'per_use_ratio'],
+            'single_use_ratio': ['student_segmentation', 'single_use_ratio'],
+            'card_5_times_ratio': ['student_segmentation', 'card_type_distribution', '5_times'],
+            'card_10_times_ratio': ['student_segmentation', 'card_type_distribution', '10_times'],
+            'card_20_times_ratio': ['student_segmentation', 'card_type_distribution', '20_times'],
             
             # 续费率参数
             'university_3year_renewal': ['renewal_rates', 'university_3year_renewal'],
-            'student_per_use_repurchase': ['renewal_rates', 'student_per_use_repurchase'],
-            'student_subscription_renewal': ['renewal_rates', 'student_subscription_renewal'],
+            'student_single_use_repurchase': ['renewal_rates', 'student_single_use_repurchase'],
+            'student_5_times_card_repurchase': ['renewal_rates', 'student_5_times_card_repurchase'],
+            'student_10_times_card_repurchase': ['renewal_rates', 'student_10_times_card_repurchase'],
+            'student_20_times_card_repurchase': ['renewal_rates', 'student_20_times_card_repurchase'],
             
             # 分成比例
-            'luma_share_from_student': ['revenue_sharing', 'luma_share_from_student']
+            'luma_share_from_student_mode_b': ['revenue_sharing', 'luma_share_from_student_mode_b']
         }
         return path_mapping.get(param_key, [param_key])
     
@@ -235,7 +282,22 @@ class EnhancedSensitivityAnalyzer:
             steps = param_def['steps']
         
         test_values = np.linspace(min_val, max_val, steps)
-        return test_values.tolist()
+        
+        # 对于需要整数的参数，转换为整数
+        integer_params = [
+            'total_half_years', 
+            'new_clients_per_half_year', 
+            'avg_students_per_uni'
+        ]
+        
+        if param_key in integer_params:
+            test_values = np.round(test_values).astype(int)
+            # 去重并保持排序，转换为Python int类型
+            test_values = sorted(list(set([int(x) for x in test_values])))
+        else:
+            test_values = test_values.tolist()
+        
+        return test_values
     
     def run_single_parameter_analysis(self, param_key: str, model_class, 
                                     test_values: Optional[List[float]] = None,

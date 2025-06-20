@@ -147,14 +147,14 @@ with tab1:
         else:
             st.warning(f"⚠️ 商业模式分布: {mode_sum:.1%} (将自动标准化)")
         
-        # 订阅期限分布检查
+        # 次卡类型分布检查
         seg = collected_params['student_segmentation']
-        sub_dist = seg['subscription_period_distribution']
-        sub_sum = sum(sub_dist.values())
-        if abs(sub_sum - 1.0) < 0.01:
-            st.success(f"✅ 订阅期限分布: {sub_sum:.1%} (正确)")
+        card_dist = seg['card_type_distribution']
+        card_sum = sum(card_dist.values())
+        if abs(card_sum - 1.0) < 0.01:
+            st.success(f"✅ 次卡类型分布: {card_sum:.1%} (正确)")
         else:
-            st.warning(f"⚠️ 订阅期限分布: {sub_sum:.1%} (将自动标准化)")
+            st.warning(f"⚠️ 次卡类型分布: {card_sum:.1%} (将自动标准化)")
         
         # 关键业务参数展示
         st.markdown("### 关键业务参数")
@@ -169,8 +169,10 @@ with tab1:
             st.metric("高校3年续约率", f"{collected_params['renewal_rates']['university_3year_renewal']:.1%}")
         
         with col3:
-            st.metric("Luma分成比例", f"{collected_params['revenue_sharing']['luma_share_from_student']:.1%}")
-            st.metric("高校分成比例", f"{1-collected_params['revenue_sharing']['luma_share_from_student']:.1%}")
+            luma_share_b = collected_params['revenue_sharing']['luma_share_from_student_mode_b']
+            st.metric("Luma分成(模式B)", f"{luma_share_b:.1%}")
+            st.metric("高校分成(模式B)", f"{1-luma_share_b:.1%}")
+            st.caption("模式C: Luma获得100%学生收入")
 
 with tab2:
     st.header("模型运行")
@@ -329,11 +331,12 @@ with tab3:
         st.metric("峰值活跃高校", f"{business_summary['peak_active_universities']:.0f} 所")
         st.metric("峰值付费学生", f"{business_summary['peak_paying_students']:,.0f} 人")
         
-        # 统一分成比例
+        # 分成比例说明
         sharing = business_summary['revenue_sharing']
-        st.write("**统一学生分成比例**")
-        st.write(f"Luma: {sharing['luma_share_from_student']:.1%}")
-        st.write(f"高校: {1-sharing['luma_share_from_student']:.1%}")
+        st.write("**学生分成比例**")
+        st.write(f"模式B - Luma: {sharing['luma_share_from_student_mode_b']:.1%}")
+        st.write(f"模式B - 高校: {1-sharing['luma_share_from_student_mode_b']:.1%}")
+        st.write(f"模式C - Luma: 100%")
     
     # 详细图表分析
     st.subheader("📈 详细收入分析")
@@ -380,13 +383,13 @@ with tab3:
     
     # 3. 学生收入分类
     fig.add_trace(
-        go.Scatter(x=results_df['period'], y=results_df['student_revenue_per_use'],
-                  mode='lines', stackgroup='student', name='按次付费'),
+        go.Scatter(x=results_df['period'], y=results_df['student_revenue_single_use'],
+                  mode='lines', stackgroup='student', name='单次付费'),
         row=2, col=1
     )
     fig.add_trace(
-        go.Scatter(x=results_df['period'], y=results_df['student_revenue_subscription'],
-                  mode='lines', stackgroup='student', name='订阅付费'),
+        go.Scatter(x=results_df['period'], y=results_df['student_revenue_card'],
+                  mode='lines', stackgroup='student', name='次卡付费'),
         row=2, col=1
     )
     
@@ -426,6 +429,27 @@ with tab3:
         period_num = int(period_filter[1:])
         display_df = display_df[display_df['period'] == period_num]
     
+    # 定义列名映射（英文->中文）
+    column_name_mapping = {
+        'period': '周期',
+        'period_name': '周期名称',
+        'luma_revenue_total': 'Luma总收入',
+        'luma_revenue_from_uni': 'Luma来自高校收入',
+        'luma_revenue_from_student_share': 'Luma学生分成收入',
+        'uni_revenue_total': '高校总收入',
+        'student_revenue_total': '学生总收入',
+        'student_revenue_single_use': '学生单次付费收入',
+        'student_revenue_card': '学生次卡收入',
+        'active_universities': '活跃高校数',
+        'total_paying_students': '付费学生总数',
+        'new_universities': '新增高校数',
+        'renewed_universities': '续约高校数',
+        'new_paying_students': '新增付费学生数',
+        'repurchasing_students': '复购学生数',
+        'cumulative_universities': '累计高校数',
+        'cumulative_students': '累计学生数'
+    }
+    
     if not show_all_columns:
         # 显示主要列
         key_columns = [
@@ -435,16 +459,59 @@ with tab3:
         ]
         display_df = display_df[key_columns]
     
+    # 重命名列为中文
+    available_columns = [col for col in display_df.columns if col in column_name_mapping]
+    chinese_mapping = {col: column_name_mapping[col] for col in available_columns}
+    display_df = display_df.rename(columns=chinese_mapping)
+    
+    # 格式化数值显示
+    revenue_columns = ['Luma总收入', 'Luma来自高校收入', 'Luma学生分成收入', 
+                      '高校总收入', '学生总收入', '学生单次付费收入', '学生次卡收入']
+    count_columns = ['活跃高校数', '付费学生总数', '新增高校数', '续约高校数', 
+                    '新增付费学生数', '复购学生数', '累计高校数', '累计学生数']
+    
+    # 格式化收入列（显示为带千分号的整数）
+    for col in revenue_columns:
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(lambda x: f"¥{x:,.0f}" if pd.notna(x) else "")
+    
+    # 格式化数量列（显示为带千分号的整数）
+    for col in count_columns:
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "")
+    
     st.dataframe(display_df, use_container_width=True)
     
-    # 下载数据
-    csv = results_df.to_csv(index=False)
-    st.download_button(
-        label="📥 下载完整财务数据 (CSV)",
-        data=csv,
-        file_name=f"luma_financial_analysis_results.csv",
-        mime="text/csv"
-    )
+    # 下载数据选项
+    st.subheader("📥 数据下载")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 原始英文列名版本
+        csv_original = results_df.to_csv(index=False)
+        st.download_button(
+            label="📥 下载完整数据 (英文列名)",
+            data=csv_original,
+            file_name=f"luma_financial_analysis_results_en.csv",
+            mime="text/csv",
+            help="下载包含所有字段的原始英文列名数据"
+        )
+    
+    with col2:
+        # 中文列名版本
+        chinese_df = results_df.copy()
+        available_columns_all = [col for col in chinese_df.columns if col in column_name_mapping]
+        chinese_mapping_all = {col: column_name_mapping[col] for col in available_columns_all}
+        chinese_df = chinese_df.rename(columns=chinese_mapping_all)
+        
+        csv_chinese = chinese_df.to_csv(index=False)
+        st.download_button(
+            label="📥 下载完整数据 (中文列名)",
+            data=csv_chinese,
+            file_name=f"luma_financial_analysis_results_cn.csv",
+            mime="text/csv",
+            help="下载包含所有字段的中文列名数据"
+        )
 
 with tab4:
     st.header("深度洞察")
@@ -478,7 +545,7 @@ with tab4:
         param_summary = pd.DataFrame({
             '参数类别': ['商业模式A占比', '商业模式B占比', '商业模式C占比',
                      'B/C学生转化率', '每半年新客户', '平均学校规模',
-                     '模式A定价', '模式B定价', '统一分成比例(Luma)'],
+                     '模式A定价', '模式B定价', '模式B分成比例(Luma)', '模式C分成比例(Luma)'],
             '参数值': [f"{dist['mode_a_ratio']:.1%}",
                      f"{dist['mode_b_ratio']:.1%}",
                      f"{dist['mode_c_ratio']:.1%}",
@@ -487,7 +554,8 @@ with tab4:
                      f"{scale['avg_students_per_uni']:,} 人",
                      f"¥{pricing['mode_a_price']:,.0f}",
                      f"¥{pricing['mode_b_price']:,.0f}",
-                     f"{sharing['luma_share_from_student']:.1%}"]
+                     f"{sharing['luma_share_from_student_mode_b']:.1%}",
+                     "100%"]
         })
         
         st.dataframe(param_summary, use_container_width=True, hide_index=True)
@@ -518,7 +586,8 @@ with tab4:
         st.write("**关键收入指标**")
         st.write(f"• 高校付费占比: {uni_ratio:.1%}")
         st.write(f"• 学生分成占比: {student_ratio:.1%}")
-        st.write(f"• 统一分成比例: {sharing['luma_share_from_student']:.1%}")
+        st.write(f"• 模式B分成比例: {sharing['luma_share_from_student_mode_b']:.1%}")
+        st.write(f"• 模式C分成比例: 100% (Luma)")
     
     # 业务策略建议
     st.subheader("💡 业务策略建议")
@@ -547,13 +616,14 @@ with tab4:
     
     with col3:
         st.write("**分成策略优化**")
-        luma_share = sharing['luma_share_from_student']
-        if luma_share < 0.3:
-            st.info("🤝 Luma分成较低，有利于：\n- 吸引更多高校合作\n- 提升B/C模式接受度")
-        elif luma_share > 0.6:
-            st.warning("💰 Luma分成较高，需要：\n- 提供更多价值服务\n- 确保高校满意度")
+        luma_share_b = sharing['luma_share_from_student_mode_b']
+        if luma_share_b < 0.3:
+            st.info("🤝 模式B分成较低，有利于：\n- 吸引更多高校合作\n- 提升模式B接受度")
+        elif luma_share_b > 0.6:
+            st.warning("💰 模式B分成较高，需要：\n- 提供更多价值服务\n- 确保高校满意度")
         else:
-            st.success("⚖️ 分成比例均衡，建议：\n- 保持当前策略\n- 根据市场反馈微调")
+            st.success("⚖️ 模式B分成均衡，建议：\n- 保持当前策略\n- 根据市场反馈微调")
+        st.caption("💡 模式C下Luma获得100%学生收入")
     
     # 参数敏感性分析
     st.subheader("📊 关键参数影响分析")

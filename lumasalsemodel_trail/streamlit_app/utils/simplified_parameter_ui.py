@@ -7,9 +7,9 @@ Simplified Parameter UI Module
 2. 价格参数：学生端和高校端的所有定价
 3. 市场规模：新客户数量和学校规模
 4. 市场分布：商业模式分布和付费转化率
-5. 学生市场细分分布：付费方式选择和订阅期限选择
+5. 学生市场细分分布：付费方式选择和次卡类型选择
 6. 续费率与复购率参数：各种续费和复购率
-7. 分成比例：Luma的收入分成比例
+7. 分成比例：Luma的收入分成比例（仅模式B）
 """
 
 import streamlit as st
@@ -30,14 +30,14 @@ class SimplifiedParameterUI:
             
             # 价格参数
             'student_prices': {
-                'price_per_use': 8.0,
-                'price_1year_member': 150.0,
-                'price_3year_member': 400.0,
-                'price_5year_member': 600.0
+                'price_single_use': 7.9,
+                'price_5_times_card': 29.9,
+                'price_10_times_card': 49.9,
+                'price_20_times_card': 79.9
             },
             'university_prices': {
-                'mode_a_price': 600000.0,  # 3年服务周期
-                'mode_b_price': 400000.0,  # 3年服务周期
+                'mode_a_price': 200000.0,  # 3年服务周期
+                'mode_b_price': 100000.0,  # 3年服务周期
                 'mode_c_price': 0.0        # 免费
             },
             
@@ -57,24 +57,26 @@ class SimplifiedParameterUI:
             
             # 学生市场细分分布
             'student_segmentation': {
-                'per_use_ratio': 0.4,                    # 选择按次付费的比例
-                'subscription_period_distribution': {     # 在订阅用户中的期限分布
-                    '1year': 0.6,
-                    '3year': 0.3,
-                    '5year': 0.1
+                'single_use_ratio': 0.4,                 # 选择单次付费的比例
+                'card_type_distribution': {               # 在次卡用户中的类型分布
+                    '5_times': 0.5,
+                    '10_times': 0.3,
+                    '20_times': 0.2
                 }
             },
             
             # 续费率与复购率参数
             'renewal_rates': {
                 'university_3year_renewal': 0.8,         # 高校3年续约率
-                'student_per_use_repurchase': 0.7,       # 学生按次付费复购率
-                'student_subscription_renewal': 0.75     # 学生订阅续费率
+                'student_single_use_repurchase': 0.5,    # 学生单次付费复购率
+                'student_5_times_card_repurchase': 0.5,  # 学生5次卡复购率
+                'student_10_times_card_repurchase': 0.5,# 学生10次卡复购率
+                'student_20_times_card_repurchase': 0.5  # 学生20次卡复购率
             },
             
             # 分成比例
             'revenue_sharing': {
-                'luma_share_from_student': 0.4           # B/C模式下Luma的分成比例
+                'luma_share_from_student_mode_b': 0.5    # 模式B下Luma的分成比例（模式C为100%）
             }
         }
     
@@ -85,9 +87,9 @@ class SimplifiedParameterUI:
         
         total_half_years = st.slider(
             "模拟周期数（半年）",
-            min_value=4, max_value=16,
+            min_value=1, max_value=16,
             value=self.default_params['total_half_years'],
-            help="设置模拟的半年周期数量。建议至少8个半年以观察完整的3年服务周期和续约情况。"
+            help="设置模拟的半年周期数量。范围为1-16个半年。建议至少8个半年以观察完整的3年服务周期和续约情况。"
         )
         
         return {'total_half_years': total_half_years}
@@ -102,37 +104,37 @@ class SimplifiedParameterUI:
         col1, col2 = st.columns(2)
         
         with col1:
-            price_per_use = st.number_input(
+            price_single_use = st.number_input(
                 "单次付费价格（元）",
                 min_value=1.0, max_value=50.0,
-                value=self.default_params['student_prices']['price_per_use'],
-                step=0.5,
-                help="学生按次使用功能的价格"
+                value=self.default_params['student_prices']['price_single_use'],
+                step=0.1,
+                help="学生单次使用功能的价格"
             )
             
-            price_1year_member = st.number_input(
-                "1年订阅价格（元）",
-                min_value=50.0, max_value=500.0,
-                value=self.default_params['student_prices']['price_1year_member'],
-                step=10.0,
-                help="学生1年订阅会员的价格"
+            price_5_times_card = st.number_input(
+                "5次卡付费价格（元）",
+                min_value=10.0, max_value=100.0,
+                value=self.default_params['student_prices']['price_5_times_card'],
+                step=0.1,
+                help="学生购买5次卡的价格"
             )
         
         with col2:
-            price_3year_member = st.number_input(
-                "3年订阅价格（元）",
-                min_value=100.0, max_value=1500.0,
-                value=self.default_params['student_prices']['price_3year_member'],
-                step=50.0,
-                help="学生3年订阅会员的价格"
+            price_10_times_card = st.number_input(
+                "10次卡付费价格（元）",
+                min_value=20.0, max_value=200.0,
+                value=self.default_params['student_prices']['price_10_times_card'],
+                step=0.1,
+                help="学生购买10次卡的价格"
             )
             
-            price_5year_member = st.number_input(
-                "5年订阅价格（元）",
-                min_value=200.0, max_value=2000.0,
-                value=self.default_params['student_prices']['price_5year_member'],
-                step=50.0,
-                help="学生5年订阅会员的价格"
+            price_20_times_card = st.number_input(
+                "20次卡付费价格（元）",
+                min_value=40.0, max_value=300.0,
+                value=self.default_params['student_prices']['price_20_times_card'],
+                step=0.1,
+                help="学生购买20次卡的价格"
             )
         
         # 高校端价格
@@ -162,10 +164,10 @@ class SimplifiedParameterUI:
         
         return {
             'student_prices': {
-                'price_per_use': price_per_use,
-                'price_1year_member': price_1year_member,
-                'price_3year_member': price_3year_member,
-                'price_5year_member': price_5year_member
+                'price_single_use': price_single_use,
+                'price_5_times_card': price_5_times_card,
+                'price_10_times_card': price_10_times_card,
+                'price_20_times_card': price_20_times_card
             },
             'university_prices': {
                 'mode_a_price': mode_a_price,
@@ -275,62 +277,62 @@ class SimplifiedParameterUI:
     def render_student_segmentation_parameters(self) -> Dict[str, Any]:
         """渲染学生市场细分分布参数"""
         st.header("👥 学生市场细分分布")
-        st.markdown("*付费学生的付费方式和订阅期限选择*")
+        st.markdown("*付费学生的付费方式和次卡类型选择*")
         
         # 付费方式分布
         st.subheader("付费方式选择")
-        per_use_ratio = st.slider(
-            "选择按次付费的学生比例",
+        single_use_ratio = st.slider(
+            "选择单次付费的学生比例",
             min_value=0.0, max_value=1.0,
-            value=self.default_params['student_segmentation']['per_use_ratio'],
+            value=self.default_params['student_segmentation']['single_use_ratio'],
             step=0.05,
-            help="付费学生中选择按次付费的比例，其余选择订阅付费"
+            help="付费学生中选择单次付费的比例，其余选择次卡付费"
         )
         
-        subscription_ratio = 1.0 - per_use_ratio
-        st.info(f"选择订阅付费的学生比例: {subscription_ratio:.1%}")
+        card_ratio = 1.0 - single_use_ratio
+        st.info(f"选择次卡付费的学生比例: {card_ratio:.1%}")
         
-        # 订阅期限分布
-        st.subheader("订阅期限选择（在订阅用户中）")
+        # 次卡类型分布
+        st.subheader("次卡类型选择（在次卡用户中）")
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            subscription_1year = st.slider(
-                "1年订阅占比",
+            card_5_times = st.slider(
+                "5次卡占比",
                 min_value=0.0, max_value=1.0,
-                value=self.default_params['student_segmentation']['subscription_period_distribution']['1year'],
+                value=self.default_params['student_segmentation']['card_type_distribution']['5_times'],
                 step=0.05,
-                key="sub_1year"
+                key="card_5_times"
             )
         
         with col2:
-            subscription_3year = st.slider(
-                "3年订阅占比",
+            card_10_times = st.slider(
+                "10次卡占比",
                 min_value=0.0, max_value=1.0,
-                value=self.default_params['student_segmentation']['subscription_period_distribution']['3year'],
+                value=self.default_params['student_segmentation']['card_type_distribution']['10_times'],
                 step=0.05,
-                key="sub_3year"
+                key="card_10_times"
             )
         
         with col3:
-            remaining_ratio = max(0, 1.0 - subscription_1year - subscription_3year)
-            subscription_5year = remaining_ratio
-            st.metric("5年订阅占比", f"{subscription_5year:.1%}")
+            remaining_ratio = max(0, 1.0 - card_5_times - card_10_times)
+            card_20_times = remaining_ratio
+            st.metric("20次卡占比", f"{card_20_times:.1%}")
         
-        # 自动标准化订阅期限分布
-        total_sub_ratio = subscription_1year + subscription_3year + subscription_5year
-        if total_sub_ratio > 0:
-            subscription_1year /= total_sub_ratio
-            subscription_3year /= total_sub_ratio
-            subscription_5year /= total_sub_ratio
+        # 自动标准化次卡类型分布
+        total_card_ratio = card_5_times + card_10_times + card_20_times
+        if total_card_ratio > 0:
+            card_5_times /= total_card_ratio
+            card_10_times /= total_card_ratio
+            card_20_times /= total_card_ratio
         
         return {
             'student_segmentation': {
-                'per_use_ratio': per_use_ratio,
-                'subscription_period_distribution': {
-                    '1year': subscription_1year,
-                    '3year': subscription_3year,
-                    '5year': subscription_5year
+                'single_use_ratio': single_use_ratio,
+                'card_type_distribution': {
+                    '5_times': card_5_times,
+                    '10_times': card_10_times,
+                    '20_times': card_20_times
                 }
             }
         }
@@ -340,68 +342,93 @@ class SimplifiedParameterUI:
         st.header("🔄 续费率与复购率参数")
         st.markdown("*客户和学生的留存与续费行为*")
         
-        col1, col2, col3 = st.columns(3)
+        # 高校续约率
+        st.subheader("高校续约率")
+        university_3year_renewal = st.slider(
+            "高校3年续约率",
+            min_value=0.0, max_value=1.0,
+            value=self.default_params['renewal_rates']['university_3year_renewal'],
+            step=0.05,
+            help="高校客户3年服务期到期后的续约概率"
+        )
+        
+        # 学生复购率
+        st.subheader("学生复购率")
+        col1, col2 = st.columns(2)
         
         with col1:
-            university_3year_renewal = st.slider(
-                "高校3年续约率",
+            student_single_use_repurchase = st.slider(
+                "单次付费复购率",
                 min_value=0.0, max_value=1.0,
-                value=self.default_params['renewal_rates']['university_3year_renewal'],
+                value=self.default_params['renewal_rates']['student_single_use_repurchase'],
                 step=0.05,
-                help="高校客户3年服务期到期后的续约概率"
+                help="选择单次付费的学生继续付费的概率"
+            )
+            
+            student_10_times_card_repurchase = st.slider(
+                "10次卡复购率",
+                min_value=0.0, max_value=1.0,
+                value=self.default_params['renewal_rates']['student_10_times_card_repurchase'],
+                step=0.05,
+                help="购买10次卡的学生再次购买的概率"
             )
         
         with col2:
-            student_per_use_repurchase = st.slider(
-                "按次付费复购率",
+            student_5_times_card_repurchase = st.slider(
+                "5次卡复购率",
                 min_value=0.0, max_value=1.0,
-                value=self.default_params['renewal_rates']['student_per_use_repurchase'],
+                value=self.default_params['renewal_rates']['student_5_times_card_repurchase'],
                 step=0.05,
-                help="选择按次付费的学生继续付费的概率（简化为当期折算）"
+                help="购买5次卡的学生再次购买的概率"
             )
-        
-        with col3:
-            student_subscription_renewal = st.slider(
-                "订阅续费率",
+            
+            student_20_times_card_repurchase = st.slider(
+                "20次卡复购率",
                 min_value=0.0, max_value=1.0,
-                value=self.default_params['renewal_rates']['student_subscription_renewal'],
+                value=self.default_params['renewal_rates']['student_20_times_card_repurchase'],
                 step=0.05,
-                help="学生订阅到期后的续费概率"
+                help="购买20次卡的学生再次购买的概率"
             )
         
         return {
             'renewal_rates': {
                 'university_3year_renewal': university_3year_renewal,
-                'student_per_use_repurchase': student_per_use_repurchase,
-                'student_subscription_renewal': student_subscription_renewal
+                'student_single_use_repurchase': student_single_use_repurchase,
+                'student_5_times_card_repurchase': student_5_times_card_repurchase,
+                'student_10_times_card_repurchase': student_10_times_card_repurchase,
+                'student_20_times_card_repurchase': student_20_times_card_repurchase
             }
         }
     
     def render_revenue_sharing_parameters(self) -> Dict[str, Any]:
         """渲染分成比例参数"""
         st.header("💼 分成比例")
-        st.markdown("*B/C模式下的收入分成设定*")
+        st.markdown("*B模式下的收入分成设定*")
         
-        luma_share_from_student = st.slider(
-            "Luma学生付费分成比例",
+        st.info("📌 **重要说明**：模式C下，Luma获得100%的学生付费收入，高校不参与分成。")
+        
+        luma_share_from_student_mode_b = st.slider(
+            "模式B下Luma学生付费分成比例",
             min_value=0.0, max_value=1.0,
-            value=self.default_params['revenue_sharing']['luma_share_from_student'],
+            value=self.default_params['revenue_sharing']['luma_share_from_student_mode_b'],
             step=0.05,
             format="%.2f",
-            help="B/C模式下，Luma从学生付费中获得的比例"
+            help="仅在模式B下生效，Luma从学生付费中获得的比例"
         )
         
-        university_share = 1.0 - luma_share_from_student
+        university_share_mode_b = 1.0 - luma_share_from_student_mode_b
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Luma分成比例", f"{luma_share_from_student:.1%}")
+            st.metric("模式B - Luma分成", f"{luma_share_from_student_mode_b:.1%}")
         with col2:
-            st.metric("高校分成比例", f"{university_share:.1%}")
+            st.metric("模式B - 高校分成", f"{university_share_mode_b:.1%}")
+        with col3:
+            st.metric("模式C - Luma分成", "100%", help="模式C下Luma获得全部学生收入")
         
         return {
             'revenue_sharing': {
-                'luma_share_from_student': luma_share_from_student
+                'luma_share_from_student_mode_b': luma_share_from_student_mode_b
             }
         }
     
@@ -472,34 +499,35 @@ class SimplifiedParameterUI:
             
             st.subheader("学生市场细分")
             seg = params['student_segmentation']
-            st.write(f"**按次付费**: {seg['per_use_ratio']:.1%}")
-            st.write(f"**订阅付费**: {1-seg['per_use_ratio']:.1%}")
-            sub_dist = seg['subscription_period_distribution']
-            st.write(f"  - 1年: {sub_dist['1year']:.1%}")
-            st.write(f"  - 3年: {sub_dist['3year']:.1%}")
-            st.write(f"  - 5年: {sub_dist['5year']:.1%}")
+            st.write(f"**单次付费**: {seg['single_use_ratio']:.1%}")
+            st.write(f"**次卡付费**: {1-seg['single_use_ratio']:.1%}")
+            card_dist = seg['card_type_distribution']
+            st.write(f"  - 5次卡: {card_dist['5_times']:.1%}")
+            st.write(f"  - 10次卡: {card_dist['10_times']:.1%}")
+            st.write(f"  - 20次卡: {card_dist['20_times']:.1%}")
         
         with col2:
             st.subheader("价格设定")
             st_prices = params['student_prices']
-            st.write(f"**学生单次**: ¥{st_prices['price_per_use']}")
-            st.write(f"**学生1年订阅**: ¥{st_prices['price_1year_member']}")
-            st.write(f"**学生3年订阅**: ¥{st_prices['price_3year_member']}")
-            st.write(f"**学生5年订阅**: ¥{st_prices['price_5year_member']}")
+            st.write(f"**学生单次付费**: ¥{st_prices['price_single_use']}")
+            st.write(f"**学生5次卡**: ¥{st_prices['price_5_times_card']}")
+            st.write(f"**学生10次卡**: ¥{st_prices['price_10_times_card']}")
+            st.write(f"**学生20次卡**: ¥{st_prices['price_20_times_card']}")
             
             uni_prices = params['university_prices']
             st.write(f"**高校模式A**: ¥{uni_prices['mode_a_price']:,.0f}")
             st.write(f"**高校模式B**: ¥{uni_prices['mode_b_price']:,.0f}")
             st.write(f"**高校模式C**: 免费")
             
-            st.subheader("续费与分成")
+            st.subheader("复购率与分成")
             renewal = params['renewal_rates']
             st.write(f"**高校3年续约率**: {renewal['university_3year_renewal']:.1%}")
-            st.write(f"**按次付费复购率**: {renewal['student_per_use_repurchase']:.1%}")
-            st.write(f"**订阅续费率**: {renewal['student_subscription_renewal']:.1%}")
+            st.write(f"**单次付费复购率**: {renewal['student_single_use_repurchase']:.1%}")
+            st.write(f"**5次卡复购率**: {renewal['student_5_times_card_repurchase']:.1%}")
+            st.write(f"**10次卡复购率**: {renewal['student_10_times_card_repurchase']:.1%}")
+            st.write(f"**20次卡复购率**: {renewal['student_20_times_card_repurchase']:.1%}")
             
             sharing = params['revenue_sharing']
-            st.write(f"**Luma学生分成**: {sharing['luma_share_from_student']:.1%}")
-            st.write(f"**高校学生分成**: {1-sharing['luma_share_from_student']:.1%}")
-        
-        return params
+            st.write(f"**模式B Luma分成**: {sharing['luma_share_from_student_mode_b']:.1%}")
+            st.write(f"**模式B 高校分成**: {1-sharing['luma_share_from_student_mode_b']:.1%}")
+            st.write(f"**模式C Luma分成**: 100%")

@@ -158,7 +158,8 @@ with st.expander("📋 当前基础参数配置", expanded=False):
         st.write(f"**模式B定价**: ¥{prices['mode_b_price']:,.0f}")
         
         sharing = base_params['revenue_sharing']
-        st.write(f"**Luma分成比例**: {sharing['luma_share_from_student']:.1%}")
+        st.write(f"**模式B Luma分成**: {sharing['luma_share_from_student_mode_b']:.1%}")
+        st.write(f"**模式C Luma分成**: 100%")
         
         renewal = base_params['renewal_rates']
         st.write(f"**高校续约率**: {renewal['university_3year_renewal']:.1%}")
@@ -199,10 +200,11 @@ elif analysis_type == "importance":
         'new_clients_per_half_year',
         'student_paid_conversion_rate_bc', 
         'university_3year_renewal',
-        'luma_share_from_student',
+        'luma_share_from_student_mode_b',
         'mode_a_price',
-        'per_use_ratio',
-        'price_per_use'
+        'single_use_ratio',
+        'price_single_use',
+        'price_5_times_card'
     ]
     
     param_configs = {}
